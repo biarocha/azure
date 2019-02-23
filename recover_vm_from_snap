@@ -1,0 +1,7 @@
+#1.Fazer snapshot do disco da VM
+#2.Criar managed disk a partir do snapshot criado
+#3.Trocar disco de VM
+$vm = Get-AzureRmVM -ResourceGroupName estudo_exame -Name vm01 
+$disk = Get-AzureRmDisk -ResourceGroupName estudo_exame -Name new-disk-vm01 
+Set-AzureRmVMOSDisk -VM $vm -ManagedDiskId $disk.Id -Name $disk.Name 
+Update-AzureRmVM -ResourceGroupName estudo_exame -VM $vm
