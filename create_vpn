@@ -1,0 +1,41 @@
+rgMLName="azr-rg-cor-ml-p"
+rgInfraApoioName=""
+subsMLName=""
+subsInfraApoioName=""
+
+#Criando o ip publico para o virtual network gateway fo ML
+pipVngMLName="azr-pip-cor-ml-vng-p"
+az network public-ip create --resource-group $rgMLName --subscription $subsMLName --name $pipVngMLName --allocation-method Dynamic --sku Basic --location eastus2
+
+#Criando a gateway subnet
+addressPrefix="10.1.255.0/27"
+vnetMLName=""
+az network vnet subnet create --vnet-name $vnetMLName -n GatewaySubnet -g $rgMLName --subscription $subsMLName --address-prefix $addressPrefix
+
+#Criando o virtual network gateway
+vngMLName="azr-vng-cor-ml-p"
+vnetMLName="azr-vn-cor-ml-p"
+az network vnet-gateway create --resource-group $rgMLName --subscription $subsMLName --name $vngMLName --public-ip-address $pipVngMLName --vnet $vnetMLName --gateway-type Vpn --sku VpnGw1 --vpn-type RouteBased --no-wait
+
+
+#Criando os local network gateways
+localNetGwInfraApoioName=""
+localNetGwMLName=""
+pipVngInfraApoioName=""
+gwIpAddressApoio="$(az network public-ip show --name $pipVngInfraApoioName --resource-group $rgInfraApoioName --subscription $subsInfraApoioName --query ipAddress)"
+gwIpAddressML="$(az network public-ip show --name $pipVngMLName --resource-group $rgMLName --subscription $subsMLName --query ipAddress)"
+az network local-gateway create --resource-group $rgName --gateway-ip-address $gwIpAddressML --name $localNetGwInfraApoioName --subscription $subsInfraApoioName --location brazilsouth
+az network local-gateway create --resource-group $rgName --gateway-ip-address $gwIpAddressApoio --name $localNetGwMLName --subscription $subsMLName --location eastus2
+
+
+#Criando as connections
+connectionMLName=""
+connectionInfraApoioName=""
+vngInfraApoioName=""
+az network vpn-connection create -g $rgMLName --subscription $subsMLName -n $connectionMLName --vnet-gateway1 $vngMLName --local-gateway2 $localNetGwMLName --shared-key Abc123
+az network vpn-connection create -g $rgInfraApoioName --subscription $subsInfraApoioName -n $connectionInfraApoioName --vnet-gateway1 $vngInfraApoioName --local-gateway2 $localNetGwInfraApoioName --shared-key Abc123
+
+#Adicionando os address prefixes nos local network gateways
+addressPrefixes="10.0.0.0/24 20.0.0.0/24 30.0.0.0/24"
+az network local-gateway update -g $rgMLName --subscription $subsMLName -n $localNetGwMLName --local-address-prefixes $addressPrefixes
+az network local-gateway update -g $rgInfraApoioName --subscription $subsInfraApoioName -n $localNetGwInfraApoioName --local-address-prefixes $addressPrefixes
