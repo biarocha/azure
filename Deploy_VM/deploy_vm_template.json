@@ -1,0 +1,317 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Location to for the resources."
+        }
+      },
+      "vmName": {
+        "type": "string",
+        "defaultValue": "windows-vm",
+        "metadata": {
+          "description": "Name for the Virtual Machine."
+        }
+      },
+      "adminUsername": {
+        "type": "string",
+        "defaultValue": "preencher",
+        "metadata": {
+          "description": "User name for the Virtual Machine."
+        }
+      },
+      "windowsOSVersion": {
+        "type": "string",
+        "defaultValue": "2016-Datacenter",
+        "allowedValues": [
+          "2012-R2-Datacenter",
+          "2016-Datacenter"
+        ],
+        "metadata": {
+          "description": "The Windows version for the VM. This will pick a fully patched image of this given Windows version."
+        }
+      },
+      "adminPassword": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Password or ssh key for the Virtual Machine."
+        }
+      },
+      "vmSize": {
+        "type": "string",
+        "defaultValue": "Standard_A2_v2",
+        "allowedValues": [
+            "Standard_A2_v2",
+            "Standard_A4_v2",
+            "Standard_D2"
+          ],
+        "metadata": {
+          "description": "Size for the Virtual Machine."
+        }
+      },
+      "storageNewOrExisting": {
+        "type": "string",
+        "defaultValue": "new",
+        "allowedValues": [
+          "new",
+          "existing"
+        ],
+        "metadata": {
+          "description": "Determines whether or not a new storage account should be provisioned."
+        }
+      },
+      "storageAccountName": {
+        "type": "string",
+        "defaultValue": "[concat('storage', uniqueString(resourceGroup().id))]",
+        "metadata": {
+          "description": "Name of the storage account"
+        }
+      },
+      "storageAccountType": {
+        "type": "string",
+        "defaultValue": "Standard_LRS",
+        "metadata": {
+          "description": "Storage account type"
+        }
+      },
+      "storageAccountResourceGroupName": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().name]",
+        "metadata": {
+          "description": "Name of the resource group for the existing storage account"
+        }
+      },
+      "virtualNetworkName": {
+        "type": "string",
+        "metadata": {
+          "description": "Name of the existing virtual network"
+        }
+      },
+      "subnetName": {
+        "type": "string",
+        "metadata": {
+          "description": "Name of the existing subnet"
+        }
+      },
+      "virtualNetworkResourceGroupName": {
+        "type": "string",
+        "metadata": {
+          "description": "Name of the resource group for the existing virtual network"
+        }
+      },
+      "customScriptStorageAccount": {
+        "type": "string",
+        "defaultValue": "storagescriptsteste",
+        "metadata": {
+          "description": "Name of the storage account that contains the script"
+        }
+      },
+      "customScriptStorageAccountKey": {
+        "type": "string",
+        "metadata": {
+          "description": "Access Key to the storage account"
+        }
+      },
+      "customScriptFileUri": {
+        "type": "string",
+        "defaultValue": "https://storagescriptsteste.blob.core.windows.net/scripts/installWebServer.ps1",
+        "metadata": {
+          "description": "URL of the blob"
+        }
+      },
+      "customScriptCommandToExecute": {
+        "type": "string",
+        "defaultValue": "powershell.exe -ExecutionPolicy Unrestricted -File installWebServer.ps1",
+        "metadata": {
+          "description": "Command to execute the script"
+        }
+      },
+      "workspaceId": {
+        "type": "string",
+        "defaultValue": "0530e5f6-2a8d-4ea4-9aad-434fb954261c",
+        "metadata": {
+          "description": "The Log Analytics Workspace ID"
+        }
+      },
+      "workspaceKey": {
+        "type": "string",
+        "defaultValue": "mhuzVVsHRgpw52zemZ4Tkh99dHq8/9yMh9UP1lXEo6KKjKbUbEV8idagmSt5IacreHlao7Geieo+cRfrkc5GKQ==",
+        "metadata": {
+          "description": "The Log Analytics Workspace Key"
+        }
+      }
+    },
+    "variables": {
+      "nicName": "[concat(parameters('vmName'), '-nic')]",
+      "subnetRef": "[resourceId(parameters('virtualNetworkResourceGroupName'), 'Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]"
+    },
+    "resources": [
+      {
+        "condition": "[equals(parameters('storageNewOrExisting'), 'new')]",
+        "type": "Microsoft.Storage/storageAccounts",
+        "apiVersion": "2017-06-01",
+        "name": "[parameters('storageAccountName')]",
+        "location": "[parameters('location')]",
+        "kind": "Storage",
+        "sku": {
+          "name": "[parameters('storageAccountType')]"
+        }
+      },
+      {
+        "apiVersion": "2017-09-01",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[variables('nicName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "ipConfigurations": [
+            {
+                "name": "ipconfig1",
+                "properties": {
+                  "privateIPAllocationMethod": "Dynamic",
+                  "subnet": {
+                    "id": "[variables('subnetRef')]"
+                  }
+                }
+              }
+          ]
+        }
+      },
+      {
+        "apiVersion": "2017-03-30",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[parameters('vmName')]",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+          "[parameters('storageAccountName')]",
+          "[variables('nicName')]"
+        ],
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[parameters('vmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[parameters('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "MicrosoftWindowsServer",
+              "offer": "WindowsServer",
+              "sku": "[parameters('windowsOSVersion')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+              }
+            ]
+          },
+          "diagnosticsProfile": {
+            "bootDiagnostics": {
+              "enabled": true,
+              "storageUri": "[reference(resourceId(parameters('storageAccountResourceGroupName'), 'Microsoft.Storage/storageAccounts/', parameters('storageAccountName')), '2017-06-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      },
+      {
+        "apiVersion": "2017-03-30",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[parameters('vmName')]",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+          "[parameters('storageAccountName')]",
+          "[variables('nicName')]"
+        ],
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[parameters('vmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[parameters('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "MicrosoftWindowsServer",
+              "offer": "WindowsServer",
+              "sku": "[parameters('windowsOSVersion')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+              }
+            ]
+          },
+          "diagnosticsProfile": {
+            "bootDiagnostics": {
+              "enabled": true,
+              "storageUri": "[reference(resourceId(parameters('storageAccountResourceGroupName'), 'Microsoft.Storage/storageAccounts/', parameters('storageAccountName')), '2017-06-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      },
+      {
+        "apiVersion": "2018-06-01",
+        "type": "Microsoft.Compute/virtualMachines/extensions",
+        "name": "[concat(parameters('vmName'),'/', 'InstallWebServer')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/',parameters('vmName'))]"
+        ],
+        "properties": {
+            "publisher": "Microsoft.Compute",
+            "type": "CustomScriptExtension",
+            "typeHandlerVersion": "1.9",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+                "fileUris": [
+                    "[parameters('customScriptFileUri')]"
+                ]
+            },
+            "protectedSettings": {
+                "commandToExecute": "[parameters('customScriptCommandToExecute')]",
+                "storageAccountName": "[parameters('customScriptStorageAccount')]",
+                "storageAccountKey": "[parameters('customScriptStorageAccountKey')]"
+            }
+        }
+    },
+    {
+        "type": "Microsoft.Compute/virtualMachines/extensions",
+        "name": "[concat(parameters('vmName'),'/', 'OMSExtension')]",
+        "apiVersion": "2018-06-01",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+            "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+        ],
+        "properties": {
+            "publisher": "Microsoft.EnterpriseCloud.Monitoring",
+            "type": "MicrosoftMonitoringAgent",
+            "typeHandlerVersion": "1.0",
+            "autoUpgradeMinorVersion": true,
+            "settings": {
+                "workspaceId": "[parameters('workspaceId')]"
+            },
+            "protectedSettings": {
+                "workspaceKey": "[parameters('workspaceKey')]"
+            }
+        }
+    }
+    ]
+  }
