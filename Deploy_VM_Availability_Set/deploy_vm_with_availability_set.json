@@ -135,7 +135,7 @@
       },
       "customScriptFileUri": {
         "type": "string",
-        "defaultValue": "https://storagescriptsteste.blob.core.windows.net/scripts/installWebServer.ps1",
+        "defaultValue": "<preencher>",
         "metadata": {
           "description": "URL of the blob"
         }
@@ -149,14 +149,14 @@
       },
       "workspaceId": {
         "type": "string",
-        "defaultValue": "0530e5f6-2a8d-4ea4-9aad-434fb954261c",
+        "defaultValue": "<preencher>",
         "metadata": {
           "description": "The Log Analytics Workspace ID"
         }
       },
       "workspaceKey": {
         "type": "string",
-        "defaultValue": "mhuzVVsHRgpw52zemZ4Tkh99dHq8/9yMh9UP1lXEo6KKjKbUbEV8idagmSt5IacreHlao7Geieo+cRfrkc5GKQ==",
+        "defaultValue": "<preencher>",
         "metadata": {
           "description": "The Log Analytics Workspace Key"
         }
